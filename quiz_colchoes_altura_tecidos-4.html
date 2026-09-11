@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz de Colchões — Altura e Tecidos</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--text:#202636;--muted:#667085;--primary:#315efb;--success:#14804a;--danger:#c62828;--border:#dfe3ec}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--text)}
+.container{max-width:1000px;margin:auto;padding:20px}
+header{background:linear-gradient(135deg,#243b8f,#315efb);color:#fff;border-radius:18px;padding:28px;margin-bottom:18px;box-shadow:0 8px 24px #1e3a8a30}
+h1{margin:0 0 8px;font-size:clamp(24px,4vw,38px)}
+header p{margin:0;opacity:.9}
+.controls,.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 4px 14px #1018280b}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+select,button,input{font:inherit}
+select{padding:11px;border:1px solid var(--border);border-radius:10px;background:#fff}
+button{border:0;border-radius:10px;padding:11px 16px;cursor:pointer;font-weight:bold}
+.primary{background:var(--primary);color:#fff}.secondary{background:#eef2ff;color:#2946b8}.neutral{background:#edf0f5;color:#344054}
+.stats{margin-left:auto;color:var(--muted);font-size:14px}
+.question{font-size:22px;font-weight:bold;line-height:1.35;margin:0 0 18px}
+.meta{font-size:13px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
+.options{display:grid;gap:10px}
+.option{display:block;width:100%;text-align:left;background:#f8f9fc;border:1px solid var(--border);color:var(--text)}
+.option:hover{background:#eef2ff;border-color:#9aaefc}
+.option.correct{background:#dff6e8;border-color:#55b77e;color:#126238}
+.option.wrong{background:#ffe4e4;border-color:#e28b8b;color:#9d2020}
+.feedback{margin-top:15px;padding:13px;border-radius:10px;display:none;line-height:1.45}
+.feedback.show{display:block}.feedback.ok{background:#e8f7ee;color:#126238}.feedback.no{background:#fff0f0;color:#9d2020}
+.answer{font-weight:bold}
+.progress{height:10px;background:#e8ebf2;border-radius:20px;overflow:hidden;margin:12px 0 18px}
+.progress span{display:block;height:100%;background:var(--primary);width:0;transition:width .3s}
+.footer{text-align:center;color:var(--muted);font-size:13px;margin:24px 0}
+.hidden{display:none}
+@media(max-width:600px){.stats{width:100%;margin-left:0}.controls button,.controls select{flex:1}.question{font-size:19px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>Quiz de Colchões</h1>
+<p>Treine altura e tecido dos modelos da apostila. Escolha uma categoria ou faça o quiz completo.</p>
+</header>
+
+<div class="controls">
+<select id="category">
+<option value="todos">Todos os modelos</option>
+<option value="combate">Linha Combate</option>
+<option value="custo">Linha Custo-benefício</option>
+<option value="premium">Linha Premium</option>
+<option value="diamond">Linha Diamond</option>
+<option value="caixa">Colchões na caixa</option>
+</select>
+<select id="mode">
+<option value="mixed">Altura ou tecido</option>
+<option value="height">Somente altura</option>
+<option value="fabric">Somente tecido</option>
+</select>
+<button class="primary" onclick="startQuiz()">Novo quiz</button>
+<button class="secondary" onclick="toggleAnswers()">Ver gabarito</button>
+<div class="stats" id="stats">0 questões respondidas</div>
+</div>
+
+<div class="card">
+<div class="progress"><span id="bar"></span></div>
+<div class="meta" id="meta">Clique em “Novo quiz” para começar</div>
+<p class="question" id="question">Pronto para estudar?</p>
+<div class="options" id="options"></div>
+<div class="feedback" id="feedback"></div>
+<div style="display:flex;gap:10px;margin-top:16px">
+<button type="button" class="neutral" onclick="nextQuestion()" id="nextBtn" disabled>Próxima questão</button>
+<button type="button" class="neutral" onclick="showAnswer()" id="answerBtn">Mostrar resposta</button>
+</div>
+</div>
+
+<div class="card hidden" id="answerCard">
+<h2>Gabarito rápido</h2>
+<div id="answerList"></div>
+</div>
+
+<div class="footer">Material de estudo baseado no questionário de altura e tecidos dos colchões.</div>
+</div>
+
+<script>
+const models = [
+["combate","Sweet Black","20 cm","Jacquard"],
+["combate","King Prime","20 cm","Jacquard"],
+["combate","King Hotel","20 cm","Viscose de Bambu"],
+["combate","King Field","20 cm","Jacquard"],
+["combate","Sky Dream","22 cm","Malha com viscose"],
+["combate","Unique Prime","24 cm","Malha com viscose"],
+["combate","Comfort Line","23 cm","Malha importada com viscose"],
+["combate","Five Star","24 cm","Malha com viscose de bambu"],
+["combate","England","24 cm","Malha com viscose de bambu"],
+["combate","Crystal","24 cm","Fibra de bambu"],
+["combate","Super Star","26 cm","Malha importada com viscose"],
+["combate","Fashion New","28 cm","Malha com linho"],
+["combate","Specialle","29 cm","Malha importada com viscose"],
+["combate","Flórida","34 cm","Malha importada com viscose"],
+["custo","Luxor","27 cm","Malha belga"],
+["custo","New Ortopedic Black","28 cm","Malha com viscose de bambu"],
+["custo","Soft Visco","27 cm","Malha belga"],
+["custo","Maxim","28 cm","Malha belga"],
+["custo","Star Comfort Blue","30 cm","Algodão orgânico"],
+["custo","Glamour","32 cm","Malha com viscose"],
+["custo","Memory Gel","32 cm","Malha importada com viscose de seda"],
+["custo","Firmpedic Desert","32 cm","Malha belga"],
+["custo","New Maximus","32 cm","Malha importada com viscose de seda"],
+["custo","Master King Gold","33 cm","Malha com viscose"],
+["custo","Black Star New","34 cm","Malha importada com viscose"],
+["custo","Cashmere Desert","34 cm","Malha belga"],
+["custo","Comfort Látex","32 cm","Malha importada com viscose"],
+["premium","Coolmax Blue","28 cm","Malha belga (Coolmax)"],
+["premium","Pocket Visco","30 cm","Malha belga (Tratamento Camomila)"],
+["premium","Comfort Plus","32 cm","Malha belga"],
+["premium","Millenium","33 cm","Malha belga"],
+["premium","Presidencial","34 cm","Malha belga"],
+["premium","President","34 cm","Cashmere"],
+["premium","New Double System","38 cm","Malha belga"],
+["diamond","Látex Motion","32 cm","Malha belga"],
+["diamond","Látex Firm","36 cm","Malha belga"],
+["diamond","High Class Látex","40 cm","Malha belga"],
+["caixa","Smart Comfort","18 cm","Não informado na apostila"],
+["caixa","Original","25 cm","Não informado na apostila"],
+["caixa","Hybrid Premium","28 cm","Não informado na apostila"]
+];
+
+let quiz=[], index=0, score=0, answered=0, current=null;
+
+function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
+function startQuiz(){
+ const cat=document.getElementById("category").value, mode=document.getElementById("mode").value;
+ quiz=shuffle(models.filter(x=>cat==="todos"||x[0]===cat)).map(m=>{
+   let type=mode==="mixed"?(Math.random()<.5?"height":"fabric"):mode;
+   return {m,type};
+ });
+ index=0;score=0;answered=0;document.getElementById("answerCard").classList.add("hidden");render();
+}
+function render(){
+ if(index>=quiz.length){finish();return}
+ current=quiz[index]; const [cat,name,height,fabric]=current.m;
+ const asking=current.type==="height";
+ document.getElementById("meta").textContent=`Questão ${index+1} de ${quiz.length} • ${name}`;
+ document.getElementById("question").textContent=asking?`Qual é a altura do colchão ${name}?`:`Qual é o tecido do colchão ${name}?`;
+ let correct=asking?height:fabric;
+ let pool=shuffle(models.map(x=>asking?x[2]:x[3])).filter((v,i,a)=>a.indexOf(v)===i);
+ let options=shuffle([correct,...pool.filter(v=>v!==correct).slice(0,3)]);
+ document.getElementById("options").innerHTML="";
+ options.forEach(v=>{
+   const b=document.createElement("button");
+   b.type="button";
+   b.className="option";
+   b.textContent=v;
+   b.addEventListener("click",()=>choose(b,v,correct));
+   document.getElementById("options").appendChild(b);
+ });
+ document.getElementById("feedback").className="feedback";
+ document.getElementById("feedback").innerHTML="";
+ document.getElementById("nextBtn").disabled=true;
+ document.getElementById("answerBtn").disabled=false;
+ document.getElementById("bar").style.width=(index/quiz.length*100)+"%";
+ document.getElementById("stats").textContent=`${answered} respondidas • Pontuação: ${score}`;
+}
+function choose(btn,value,correct){
+ if(btn.dataset.respondida==="true")return;
+ document.querySelectorAll(".option").forEach(b=>{b.disabled=true;b.dataset.respondida="true"});
+ const ok=value===correct; if(ok)score++; answered++;
+ btn.classList.add(ok?"correct":"wrong");
+ document.querySelectorAll(".option").forEach(b=>{if(b.textContent===correct)b.classList.add("correct")});
+ const fb=document.getElementById("feedback");fb.className="feedback show "+(ok?"ok":"no");
+ fb.innerHTML=ok?"Correto!":"Resposta incorreta.";
+ fb.innerHTML+=` <span class="answer">Resposta: ${correct}</span>`;
+ document.getElementById("nextBtn").disabled=false;document.getElementById("answerBtn").disabled=true;
+ document.getElementById("stats").textContent=`${answered} respondidas • Pontuação: ${score}`;
+}
+function showAnswer(){
+ if(!current)return;
+ const correct=current.type==="height"?current.m[2]:current.m[3];
+ const fb=document.getElementById("feedback");fb.className="feedback show";fb.innerHTML=`<span class="answer">Resposta: ${correct}</span>`;
+ document.getElementById("answerBtn").disabled=true;
+}
+function nextQuestion(){
+ if(!current || document.getElementById("nextBtn").disabled)return;
+ index++;
+ render();
+}
+function finish(){
+ document.getElementById("meta").textContent="Quiz finalizado";
+ document.getElementById("question").textContent=`Você acertou ${score} de ${quiz.length} questões!`;
+ document.getElementById("options").innerHTML=`<button class="primary" onclick="startQuiz()">Refazer quiz</button>`;
+ document.getElementById("feedback").className="feedback show ok";
+ document.getElementById("feedback").innerHTML=`Aproveitamento: ${Math.round(score/quiz.length*100)}%`;
+ document.getElementById("nextBtn").disabled=true;document.getElementById("answerBtn").disabled=true;
+ document.getElementById("bar").style.width="100%";
+}
+function toggleAnswers(){
+ const card=document.getElementById("answerCard");card.classList.toggle("hidden");
+ if(!card.classList.contains("hidden")){
+  document.getElementById("answerList").innerHTML=models.map(x=>`<p><b>${x[1]}</b> — ${x[2]} • ${x[3]}</p>`).join("");
+ }
+}
+startQuiz();
+</script>
+</body>
+</html>
